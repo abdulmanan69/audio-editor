@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kerf — Audio Workstation</title>
+  <meta name="description" content="Kerf is a multitrack audio editor that runs entirely in your browser. Cut, trim, bleep, clean up, master and export audio — offline, with nothing uploaded.">
+  <meta name="theme-color" content="#0d1519" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#e9ecea" media="(prefers-color-scheme: light)">
+  <meta name="color-scheme" content="dark light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kerf">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('kerf.settings') || '{}');
+        var t = s.theme || 'system';
+        if (t === 'system') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#tracks-scroll">Skip to tracks</a>
+  <div class="app" id="app">
+
+    <!-- Menu bar -->
+    <header class="menubar" role="banner">
+      <button class="icon-btn menubar-burger" id="btn-burger" aria-label="Open menu" data-icon="menu"></button>
+      <div class="brand" aria-label="Kerf">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="1" y="1" width="30" height="30" rx="8" class="brand-mark-bg"/>
+          <path d="M7 16h3l2-6 3 13 3-17 3 14 2-4h2" class="brand-mark-wave"/>
+          <path d="M22.5 5v22" class="brand-mark-cut"/>
+        </svg>
+        <span class="brand-name">Kerf</span>
+      </div>
+      <nav class="menus" id="menus" role="menubar" aria-label="Main menu"></nav>
+      <div class="project-name">
+        <input id="project-name" type="text" value="Untitled project" spellcheck="false" aria-label="Project name" maxlength="80">
+        <span class="save-state" id="save-state" title="Autosave status"></span>
+      </div>
+      <div class="menubar-right">
+        <button class="palette-trigger" id="btn-palette" data-cmd="view.palette" title="Search commands (Ctrl+K)">
+          <span data-icon="search"></span><span class="palette-trigger-label">Search commands</span><kbd>Ctrl K</kbd>
+        </button>
+        <button class="btn btn-accent btn-sm" id="btn-install" hidden data-cmd="app.install"><span data-icon="download"></span><span>Install</span></button>
+        <button class="icon-btn" data-cmd="view.theme" title="Switch theme" aria-label="Switch theme" data-icon="contrast"></button>
+        <button class="icon-btn" data-cmd="view.panel" title="Toggle side panel" aria-label="Toggle side panel" data-icon="panel"></button>
+      </div>
+    </header>
+
+    <!-- Transport and edit toolbar -->
+    <section class="toolbar" id="toolbar" aria-label="Transport and editing">
+      <div class="tool-group transport-group" role="group" aria-label="Transport">
+        <button class="icon-btn" data-cmd="transport.start" data-icon="skip-back" aria-label="Go to start"></button>
+        <button class="icon-btn transport-play" data-cmd="transport.play" data-icon="play" aria-label="Play" id="btn-play"></button>
+        <button class="icon-btn" data-cmd="transport.stop" data-icon="stop" aria-label="Stop"></button>
+        <button class="icon-btn transport-rec" data-cmd="transport.record" data-icon="record" aria-label="Record" id="btn-record"></button>
+        <button class="icon-btn" data-cmd="transport.end" data-icon="skip-forward" aria-label="Go to end"></button>
+        <button class="icon-btn toggle" data-cmd="transport.loop" data-icon="repeat" aria-label="Loop selection" id="btn-loop" aria-pressed="false"></button>
+      </div>
+
+      <div class="vfd" id="vfd" role="timer" aria-live="off" aria-label="Playhead position">
+        <div class="vfd-main" id="vfd-main"></div>
+        <div class="vfd-sub">
+          <span class="vfd-tag" id="vfd-state">STOP</span>
+          <span class="vfd-tag" id="vfd-rate">48.0k</span>
+          <span class="vfd-tag" id="vfd-sel">SEL —</span>
+        </div>
+      </div>
+
+      <div class="meters" id="meters" aria-label="Output level">
+        <canvas id="meter-canvas" width="220" height="34"></canvas>
+        <div class="meter-readout"><span id="meter-peak">-∞</span><span class="meter-unit">dBFS</span></div>
+      </div>
+
+      <div class="tool-group" role="group" aria-label="Edit">
+        <button class="icon-btn" data-cmd="edit.cut" data-icon="scissors" aria-label="Cut"></button>
+        <button class="icon-btn" data-cmd="edit.copy" data-icon="copy" aria-label="Copy"></button>
+        <button class="icon-btn" data-cmd="edit.paste" data-icon="paste" aria-label="Paste"></button>
+        <button class="icon-btn" data-cmd="edit.delete" data-icon="trash" aria-label="Delete selection"></button>
+        <button class="icon-btn" data-cmd="edit.trim" data-icon="crop" aria-label="Trim to selection"></button>
+        <button class="icon-btn" data-cmd="edit.split" data-icon="split" aria-label="Split track at cursor"></button>
+        <button class="icon-btn" data-cmd="edit.silence" data-icon="mute" aria-label="Silence selection"></button>
+        <button class="btn btn-ghost btn-beep" data-cmd="edit.bleep" aria-label="Bleep selection"><span data-icon="beep"></span><span>Bleep</span></button>
+      </div>
+
+      <div class="tool-group" role="group" aria-label="History">
+        <button class="icon-btn" data-cmd="edit.undo" data-icon="undo" aria-label="Undo"></button>
+        <button class="icon-btn" data-cmd="edit.redo" data-icon="redo" aria-label="Redo"></button>
+      </div>
+
+      <div class="tool-group" role="group" aria-label="Zoom">
+        <button class="icon-btn" data-cmd="view.zoomIn" data-icon="zoom-in" aria-label="Zoom in"></button>
+        <button class="icon-btn" data-cmd="view.zoomOut" data-icon="zoom-out" aria-label="Zoom out"></button>
+        <button class="icon-btn" data-cmd="view.zoomSel" data-icon="zoom-sel" aria-label="Zoom to selection"></button>
+        <button class="icon-btn" data-cmd="view.zoomFit" data-icon="fit" aria-label="Fit project in window"></button>
+      </div>
+
+      <div class="tool-group sliders-group" role="group" aria-label="Playback">
+        <label class="mini-slider" title="Master volume">
+          <span data-icon="volume"></span>
+          <input type="range" id="master-volume" min="-60" max="6" step="0.5" value="0" aria-label="Master volume">
+          <output id="master-volume-out">0.0 dB</output>
+        </label>
+        <label class="mini-slider" title="Playback speed (changes pitch; does not edit audio)">
+          <span data-icon="gauge"></span>
+          <input type="range" id="play-rate" min="0.25" max="2" step="0.05" value="1" aria-label="Playback speed">
+          <output id="play-rate-out">1.00×</output>
+        </label>
+      </div>
+    </section>
+
+    <!-- Workspace -->
+    <main class="workspace" id="workspace">
+      <section class="editor" id="editor" aria-label="Tracks">
+        <div class="ruler-row">
+          <div class="ruler-corner">
+            <button class="btn btn-ghost btn-sm" data-cmd="track.new" title="Add an empty track"><span data-icon="plus"></span><span>Track</span></button>
+            <button class="icon-btn icon-btn-sm" data-cmd="file.import" title="Import audio" aria-label="Import audio" data-icon="folder"></button>
+          </div>
+          <div class="ruler-wrap" id="ruler-wrap"><canvas id="ruler"></canvas></div>
+        </div>
+        <div class="tracks-scroll" id="tracks-scroll" tabindex="0" aria-label="Track area. Drag to select audio.">
+          <div class="tracks" id="tracks"></div>
+          <div class="lane-overlay" id="lane-overlay" aria-hidden="true">
+            <div class="playhead" id="playhead"></div>
+            <div class="cursor-line" id="cursor-line"></div>
+          </div>
+        </div>
+
+        <div class="empty-state" id="empty-state">
+          <div class="empty-inner">
+            <svg class="empty-wave" viewBox="0 0 600 90" preserveAspectRatio="none" aria-hidden="true"><path id="empty-wave-path"/></svg>
+            <h1 class="empty-title">Drop audio to start cutting.</h1>
+            <p class="empty-copy">WAV, MP3, FLAC, OGG, M4A and the audio track of most video files. Everything stays on this device.</p>
+            <div class="empty-actions">
+              <button class="btn btn-accent" data-cmd="file.import"><span data-icon="folder"></span><span>Open audio</span></button>
+              <button class="btn" data-cmd="transport.record"><span data-icon="mic"></span><span>Record</span></button>
+              <button class="btn" data-cmd="gen.tone"><span data-icon="wave"></span><span>Generate tone</span></button>
+              <button class="btn btn-ghost" data-cmd="file.demo"><span data-icon="sparkle"></span><span>Load sample</span></button>
+            </div>
+            <p class="empty-hint">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to search every tool. <kbd>?</kbd> lists shortcuts.</p>
+          </div>
+        </div>
+
+        <div class="overview-row" id="overview-row">
+          <canvas id="overview" aria-label="Project overview. Drag to scroll."></canvas>
+        </div>
+        <div class="drop-veil" id="drop-veil" hidden><div>Drop to import as new tracks</div></div>
+      </section>
+
+      <aside class="sidepanel" id="sidepanel" aria-label="Side panel">
+        <div class="tabs" role="tablist" id="side-tabs">
+          <button role="tab" class="tab" data-tab="effects" aria-selected="true">Effects</button>
+          <button role="tab" class="tab" data-tab="markers" aria-selected="false">Markers</button>
+          <button role="tab" class="tab" data-tab="history" aria-selected="false">History</button>
+          <button role="tab" class="tab" data-tab="analyze" aria-selected="false">Analyze</button>
+        </div>
+        <div class="tab-panels">
+          <section class="tab-panel" data-panel="effects" role="tabpanel">
+            <div class="search-field"><span data-icon="search"></span><input type="search" id="fx-search" placeholder="Find an effect or generator" aria-label="Find an effect"></div>
+            <div class="fx-list" id="fx-list"></div>
+          </section>
+          <section class="tab-panel" data-panel="markers" role="tabpanel" hidden>
+            <div class="panel-actions">
+              <button class="btn btn-sm" data-cmd="marker.add"><span data-icon="flag"></span><span>Add at cursor</span></button>
+              <button class="btn btn-sm" data-cmd="marker.addRegion"><span data-icon="region"></span><span>Label selection</span></button>
+              <button class="icon-btn icon-btn-sm" data-cmd="marker.export" title="Export labels" aria-label="Export labels" data-icon="download"></button>
+              <button class="icon-btn icon-btn-sm" data-cmd="marker.import" title="Import labels" aria-label="Import labels" data-icon="upload"></button>
+            </div>
+            <ol class="marker-list" id="marker-list"></ol>
+          </section>
+          <section class="tab-panel" data-panel="history" role="tabpanel" hidden>
+            <ol class="history-list" id="history-list"></ol>
+          </section>
+          <section class="tab-panel" data-panel="analyze" role="tabpanel" hidden>
+            <div class="analyzer-block">
+              <div class="block-title">Spectrum <span class="block-sub" id="spectrum-src">output</span></div>
+              <canvas id="spectrum" class="spectrum-canvas"></canvas>
+            </div>
+            <div class="analyzer-block">
+              <div class="block-title">Selection <span class="block-sub" id="quick-stats-src">—</span></div>
+              <dl class="quick-stats" id="quick-stats"></dl>
+              <div class="panel-actions">
+                <button class="btn btn-sm" data-cmd="analyze.stats"><span data-icon="activity"></span><span>Full report</span></button>
+                <button class="btn btn-sm" data-cmd="analyze.spectrum"><span data-icon="chart"></span><span>Plot spectrum</span></button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Status bar -->
+    <footer class="statusbar" id="statusbar">
+      <div class="sel-fields" aria-label="Selection">
+        <label>Start <input class="time-input" id="sel-start" spellcheck="false" aria-label="Selection start"></label>
+        <label>End <input class="time-input" id="sel-end" spellcheck="false" aria-label="Selection end"></label>
+        <label>Length <input class="time-input" id="sel-len" spellcheck="false" aria-label="Selection length"></label>
+        <label class="snap-toggle" title="Snap edits to zero crossings"><input type="checkbox" id="snap-zero"> Snap to zero</label>
+      </div>
+      <div class="status-info" id="status-info"></div>
+      <div class="status-msg" id="status-msg" role="status" aria-live="polite"></div>
+    </footer>
+  </div>
+
+  <div id="menu-layer" class="menu-layer"></div>
+  <div id="dialog-layer"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div class="busy" id="busy" hidden>
+    <div class="busy-card" role="alertdialog" aria-live="assertive" aria-label="Processing">
+      <div class="busy-bar"><i id="busy-progress"></i></div>
+      <div class="busy-label" id="busy-label">Processing…</div>
+    </div>
+  </div>
+  <input type="file" id="file-input" multiple accept="audio/*,video/*,.wav,.mp3,.flac,.ogg,.oga,.opus,.m4a,.aac,.webm,.mp4,.kerf" hidden>
+  <noscript><p style="padding:2rem;font:16px system-ui">Kerf needs JavaScript to run.</p></noscript>
+</body>
+</html>
