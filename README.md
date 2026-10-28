@@ -1,11 +1,51 @@
 # Kerf — browser audio workstation
 
+![Kerf — a full audio editor that runs in your browser](docs/screenshots/00-cover.png)
+
 Kerf is a multitrack audio editor that runs entirely in the browser. It installs as a
 Progressive Web App, works offline, and never uploads audio: decoding, editing, effects and
 export all happen on the user's device.
 
 It is a static site with no build step, so it can be hosted on GitHub Pages (or any static
 host) as-is.
+
+## Screenshots
+
+**Multitrack editor** — waveforms, markers, live level meters and a running spectrum.
+
+![Multitrack editor during playback](docs/screenshots/01-editor.png)
+
+**Bleep to censor** — select a word and press `Ctrl+B`.
+
+![A bleeped region in the timeline with the Edit menu open](docs/screenshots/05-bleep.png)
+
+**Effects with live curves and presets** — the 10-band graphic EQ.
+
+![Graphic EQ dialog with the Voice clarity preset](docs/screenshots/02-graphic-eq.png)
+
+**Loudness report** — integrated LUFS, loudness range and true peak, with pass/fail checks
+against podcast, streaming, broadcast and audiobook specs.
+
+![Loudness and level report passing the podcast spec](docs/screenshots/03-loudness-report.png)
+
+**Spectrogram view**
+
+![Tracks shown as spectrograms](docs/screenshots/04-spectrogram.png)
+
+**Batch processor** — run an effect chain over many files and download a ZIP.
+
+![Batch processor with five finished files](docs/screenshots/07-batch.png)
+
+**Light theme and command palette** (`Ctrl+K`)
+
+![Light theme with the command palette searching for noise](docs/screenshots/08-light-theme-search.png)
+
+**Start screen and phone layout**
+
+<p>
+  <img src="docs/screenshots/06-welcome.png" alt="Start screen with Open audio, Record, Generate tone and Load sample" width="68%">
+  <img src="docs/screenshots/09-mobile.png" alt="Kerf on a phone" width="28%">
+</p>
 
 ## Features
 
@@ -129,6 +169,7 @@ manifest.webmanifest    PWA manifest (icons, shortcuts, file handlers, share tar
 sw.js                   Service worker (offline cache, update flow, share target)
 css/app.css             All styles and theme tokens
 icons/                  App icons (regenerate with: node tools/make-icons.mjs)
+docs/screenshots/       Screenshots used in this README
 js/main.js              Boot, keyboard routing, drag-and-drop, PWA wiring
 js/app.js               Project state, edit operations, transport, persistence
 js/commands.js          Command registry (menus, palette and shortcuts)
