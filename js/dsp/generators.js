@@ -280,6 +280,12 @@ export function demoTracks(sr) {
     }
   }
   const norm = (arrs, target) => {
+    for (const a of arrs) {
+      let mean = 0;
+      for (let i = 0; i < a.length; i++) mean += a[i];
+      mean /= a.length;
+      for (let i = 0; i < a.length; i++) a[i] -= mean;
+    }
     let p = 0;
     for (const a of arrs) for (let i = 0; i < a.length; i++) p = Math.max(p, Math.abs(a[i]));
     const g = p ? target / p : 1;

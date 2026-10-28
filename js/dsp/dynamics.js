@@ -1,6 +1,6 @@
 // Gain, normalization, fades and dynamics processors. All channel-linked.
 import { AudioData, mapChannels, peakAbs } from '../core/audio-data.js';
-import { dbToGain } from '../core/format.js';
+import { dbToGain, gainToDb } from '../core/format.js';
 import { measureLoudness, truePeak } from './loudness.js';
 
 export function amplify(a, gainDb) {
@@ -38,11 +38,40 @@ export function normalizePeak(a, targetDb = -1, { independent = false, dc = fals
   return mapChannels(src, ch => { const o = new Float32Array(ch.length); for (let i = 0; i < ch.length; i++) o[i] = ch[i] * g; return o; });
 }
 
+// Limit so the *true* (inter-sample) peak stays under ceilingDb. The limiter caps sample
+// peaks, so its ceiling is tightened until the measured true peak fits.
+function truePeakLimit(a, ceilingDb) {
+  if (truePeak(a) <= dbToGain(ceilingDb)) return a;
+  let sampleCeil = ceilingDb - 0.3, out = a;
+  for (let i = 0; i < 5; i++) {
+    out = limiter(a, { ceilingDb: sampleCeil, releaseMs: 80, lookaheadMs: 5 });
+    const over = gainToDb(truePeak(out)) - ceilingDb;
+    if (over <= 0) break;
+    sampleCeil -= over + 0.05;
+  }
+  return out;
+}
+
 export function loudnessNormalize(a, targetLufs = -16, { limit = true, ceilingDb = -1 } = {}) {
   const { integrated } = measureLoudness(a);
   if (!isFinite(integrated)) return a;
-  let out = amplify(a, targetLufs - integrated);
-  if (limit && truePeak(out) > dbToGain(ceilingDb)) out = limiter(out, { ceilingDb, releaseMs: 80, lookaheadMs: 5 });
+  let pre = targetLufs - integrated;
+  if (!limit) return amplify(a, pre);
+  // Limiting removes some loudness on peaky material, so re-aim the pre-gain until the
+  // result lands on target with the peak ceiling still respected.
+  // Once limiting kicks in, each extra dB of gain adds less than 1 dB of loudness, so the
+  // step is scaled by the measured slope (secant method).
+  let out = a, prev = null;
+  const start = pre;
+  for (let pass = 0; pass < 6; pass++) {
+    out = truePeakLimit(amplify(a, pre), ceilingDb);
+    const got = measureLoudness(out).integrated;
+    const miss = targetLufs - got;
+    if (!isFinite(miss) || Math.abs(miss) < 0.15) break;
+    const slope = prev ? Math.min(1, Math.max(0.15, (got - prev.got) / (pre - prev.pre || 1e-6))) : 1;
+    prev = { pre, got };
+    pre = Math.min(start + 24, pre + miss / slope);
+  }
   return out;
 }
 

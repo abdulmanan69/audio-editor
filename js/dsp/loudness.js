@@ -69,8 +69,8 @@ export function measureLoudness(audio) {
   return { integrated, momentaryMax, shortTermMax, lra };
 }
 
-// 4× oversampled peak using a 16-tap windowed-sinc polyphase interpolator.
-const TP_TAPS = 16;
+// 4× oversampled peak using a 32-tap Blackman-windowed sinc polyphase interpolator.
+const TP_TAPS = 32;
 const tpPhases = (() => {
   const phases = [];
   for (let p = 1; p < 4; p++) {
@@ -79,7 +79,8 @@ const tpPhases = (() => {
     for (let k = 0; k < TP_TAPS; k++) {
       const x = k - (TP_TAPS / 2 - 1) - t;
       const sinc = x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
-      const w = 0.5 + 0.5 * Math.cos((Math.PI * x) / (TP_TAPS / 2));
+      const u = (x + TP_TAPS / 2) / TP_TAPS;
+      const w = 0.42 - 0.5 * Math.cos(2 * Math.PI * u) + 0.08 * Math.cos(4 * Math.PI * u);
       h[k] = sinc * w; sum += h[k];
     }
     for (let k = 0; k < TP_TAPS; k++) h[k] /= sum;
@@ -92,12 +93,18 @@ export function truePeak(audio) {
   let peak = 0;
   const off = TP_TAPS / 2 - 1;
   for (const ch of audio.channels) {
-    const n = ch.length;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < ch.length; i++) {
       const v = Math.abs(ch[i]);
       if (v > peak) peak = v;
     }
+  }
+  // Inter-sample overs only matter near the loudest samples; skipping stretches where both
+  // neighbours sit 6 dB below the sample peak keeps long files fast.
+  const near = peak * 0.5;
+  for (const ch of audio.channels) {
+    const n = ch.length;
     for (let i = off; i < n - TP_TAPS + off; i++) {
+      if (Math.abs(ch[i]) < near && Math.abs(ch[i + 1]) < near) continue;
       for (const h of tpPhases) {
         let y = 0;
         const base = i - off;

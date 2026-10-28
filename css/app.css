@@ -724,7 +724,7 @@ textarea.text-input { height: auto; padding: 8px; font: 12px/1.45 var(--font-mon
   #btn-install { padding: 0 7px; }
   .track-meta { display: none; }
   .sel-fields label:nth-child(3), .snap-toggle, .status-info { display: none; }
-  .time-input { width: 92px; }
+  .time-input { width: 108px; }
   .vfd { height: 46px; padding: 4px 9px; }
   .vfd-main svg { height: 21px; }
   .sliders-group { display: none; }
